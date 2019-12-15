@@ -89,29 +89,52 @@ sub get
     my $var1 = (((($at>>3) - ($dig->{T1}<<1))) * $dig->{T2}) >> 11;
     my $var2 = ((((($at>>4) - $dig->{T1}) * (($at>>4) - $dig->{T1})) >> 12) * $dig->{T3}) >> 14;
     my $t_fine = $var1 + $var2;
-    $at = 0.01 * (($t_fine * 5 + 128) >> 8);
+    $at = 0.01 / 256 * ($t_fine * 5 + 128);
+    if    ($at < -40.0) { $at = -40.1 }
+    elsif ($at >  85.0) { $at =  85.1 }
 
     # Compute RH
-    $rh = ($rh - ($dig->{H4} * 64.0 + $dig->{H5} / 16384.0 * ($t_fine - 76800.0)))
-         * ($dig->{H2} / 65536.0 * (1.0 + $dig->{H6} / 67108864.0 * $rh * (1.0 + $dig->{H3} / 67108864.0 * $rh)));
-    $rh = $rh * (1.0 - $dig->{H1} * $rh / 524288.0);
-    if    ($rh > 110) { $rh = 110 }
-    elsif ($rh <   0) { $rh =   0 }
+    $rh = ($rh - ($dig->{H4} * 64 + $dig->{H5} / 16384 * ($t_fine - 76800)))
+         * ($dig->{H2} / 65536 * (1 + $dig->{H6} / 67108864 * $rh * (1 + $dig->{H3} / 67108864 * $rh)));
+    $rh = $rh * (1 - $dig->{H1} * $rh / 524288.0);
+    if    ($rh > 100.0) { $rh = 100.1 }
+    elsif ($rh <   0.0) { $rh =   0.0 }
 
-    # Compute BP
-    $var1 = $t_fine / 2.0 - 64000.0;
-    $var2 = $var1 * $var1 * $dig->{P6} / 32768.0;
-    $var2 = $var2 + $var1 * $dig->{P5} * 2.0;
-    $var2 = $var2 / 4.0 + $dig->{P4} * 65536.0;
-    $var1 = ($dig->{P3} * $var1 * $var1 / 524288.0 + $dig->{P2} * $var1) / 524288.0;
-    $var1 = (1.0 + $var1 / 32768.0) * $dig->{P1};
-    if ($var1 == 0) { $bp = 0 }
+#   # Compute BP - 32 bit
+#   $var1 = $t_fine / 2.0 - 64000.0;
+#   $var2 = $var1 * $var1 * $dig->{P6} / 32768.0;
+#   $var2 = $var2 + $var1 * $dig->{P5} * 2.0;
+#   $var2 = $var2 / 4.0 + $dig->{P4} * 65536.0;
+#   $var1 = ($dig->{P3} * $var1 * $var1 / 524288.0 + $dig->{P2} * $var1) / 524288.0;
+#   $var1 = (1.0 + $var1 / 32768.0) * $dig->{P1};
+#   if ($var1 == 0) { $bp = 0.0 }
+#   else {
+#       $bp = 1048576.0 - $bp;
+#       $bp = (($bp - $var2 / 4096.0) * 6250.0) / $var1;
+#       $var1 = $dig->{P9} * $bp * $bp / 2147483648.0;
+#       $var2 = $bp * $dig->{P8} / 32768.0;
+#       $bp = 0.01 * ($bp + ($var1 + $var2 + $dig->{P7}) / 16.0);
+#       if    ($bp > 1100.0) { $bp = 1100.1 }
+#       elsif ($bp <  300.0) { $bp =  299.9 }
+#   }
+
+    # Compute BP - 64 bit
+    $var1 = $t_fine - 128000;
+    $var2 = $var1 * $var1 * $dig->{P6};
+    $var2 = $var2 + $var1 * $dig->{P5} * 131072;
+    $var2 = $var2 + $dig->{P4} * 34359738368;
+    $var1 = $var1 * $var1 * $dig->{P3} / 256 + $var1 * $dig->{P2} * 4096;
+    $var1 = (16384 + $var1 / 8589934592) * $dig->{P1};
+    if ($var1 == 0) { $bp = 0.0 }
     else {
-        $bp = 1048576.0 - $bp;
-        $bp = (($bp - $var2 / 4096.0) * 6250.0) / $var1;
-        $var1 = $dig->{P9} * $bp * $bp / 2147483648.0;
-        $var2 = $bp * $dig->{P8} / 32768.0;
-        $bp = 0.01 * ($bp + ($var1 + $var2 + $dig->{P7}) / 16.0);
+        my $var4 = 1048576 - $bp;
+        $var4 = ($var4 * 2147483648 - $var2) * 3125 / $var1;
+        $var1 = $dig->{P9} * $var4 * $var4 / 2249051034615808;
+        $var2 = $dig->{P8} * $var4 / 524288; 
+        $var4 = ($var4 + $var1 + $var2) / 256 + $dig->{P7} * 16;
+        $bp = 0.01 / 256 * $var4;
+        if    ($bp <  300.0) { $bp =  299.9 }
+        elsif ($bp > 1100.0) { $bp = 1100.1 }
     }
 
     return ($at, $rh, $bp);
