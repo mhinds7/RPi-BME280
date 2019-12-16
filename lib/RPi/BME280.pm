@@ -16,7 +16,7 @@ sub new
     $me->{dev} = RPi::I2C->new($me->{addr})
         || die("RPi::I2C->new($me->{addr}) failed");
     ($me->{devid} = $me->{dev}->read_byte(0xd0)) == 0x60
-        || die("@{[ ref($me) ]} invalid ID: $me->{devid}");
+        || die("@{[ref($me)]} invalid ID: $me->{devid}");
     return $me;
 }
 
@@ -24,15 +24,20 @@ sub reset
 {
     my $me = $_[0];
     my $dev = $me->{dev};
-    my $class = ref($me);
+    $me->{args}->{quiet} || printf(STDERR "@{[ref($me)]}::reset\n");
 
-    $me->{args}->{quiet} || printf(STDERR "${class}::reset\n");
     $dev->write_byte(0xb6, 0x0e) == 0 # Reset
-        || die("${class}::reset failed");
+        || die("@{[ref($me)]}::reset failed");
+    select(undef, undef, undef, 0.05);
+    $me->setup();
+}
 
-    select(undef, undef, undef, 0.1);
+sub setup
+{
+    my $me = $_[0];
+    my $dev = $me->{dev};
+    $me->{args}->{quiet} || printf(STDERR "@{[ref($me)]}::setup\n");
 
-    $me->{args}->{quiet} || printf(STDERR "${class} Setup Meas Params\n");
     $dev->write_byte(0x01, 0xf2);
     $dev->write_byte(0x27, 0xf4); # 001 001 11 0010 0111 0x27
     $dev->write_byte(0x0c, 0xf5); # 000 011 00 0000 1100 0x0c
@@ -43,7 +48,9 @@ sub init
     my ($me, %args) = @_;
     my $dev = $me->{dev};
 
-    $me->{args}->{quiet} || printf(STDERR "@{[ ref($me) ]}::init\n");
+    $me->{args}->{reset} && $me->reset();
+
+    $me->{args}->{quiet} || printf(STDERR "@{[ref($me)]}::init\n");
 
     my $dig = $me->{dig} = {};
     ($dig->{T1}, $dig->{T2}, $dig->{T3}
@@ -61,8 +68,6 @@ sub init
     ($params->{ctl_rh}, $params->{status}, $params->{ctl_meas}, $params->{config})
         = $dev->read_block(4, 0xf2);
     $me->{params} = $params;
-
-    $me->{args}->{reset} && $me->reset();
 
     if ($me->{args}->{verbose}) {
         printf("id       0xd0 %02x\n", $me->{devid});
