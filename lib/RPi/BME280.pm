@@ -38,9 +38,18 @@ sub setup
     my $dev = $me->{dev};
     $me->{args}->{quiet} || printf(STDERR "@{[ref($me)]}::setup\n");
 
-    $dev->write_byte(0x01, 0xf2);
-    $dev->write_byte(0x27, 0xf4); # 001 001 11 0010 0111 0x27
-    $dev->write_byte(0x0c, 0xf5); # 000 011 00 0000 1100 0x0c
+    my @rh_ctl   = (0x04, 0xf2); # 00000  101  0000 0100 OS=8
+    my @meas_ctl = (0x91, 0xf4); # 100 100 01  1001 0001 OS=T8,P8,FORCE
+    my @config   = (0x0c, 0xf5); # 000 011 00  0000 1100 INA=0.5ms,IIR=8
+
+    if ($me->{args}->{verbose}) {
+        printf("wr ctl-rh   %02x %02x\n", @rh_ctl);
+        printf("wr ctl-meas %02x %02x\n", @meas_ctl);
+        printf("wr config   %02x %02x\n", @config);
+    }
+    $dev->write_byte(@rh_ctl);
+    $dev->write_byte(@meas_ctl);
+    $dev->write_byte(@config);
 }
 
 sub init
@@ -69,12 +78,15 @@ sub init
         = $dev->read_block(4, 0xf2);
     $me->{params} = $params;
 
+    ($params->{ctl_meas} & 3) != 0
+        || ($me->{trig} = [ $params->{ctl_meas} | 1, 0xf4 ]);
+
     if ($me->{args}->{verbose}) {
-        printf("id       0xd0 %02x\n", $me->{devid});
-        printf("status   0xf3 %02x\n", $params->{status});
-        printf("ctl-rh   0xf2 %02x\n", $params->{ctl_rh});
-        printf("ctl-meas 0xf4 %02x\n", $params->{ctl_meas});
-        printf("config   0xf5 %02x\n", $params->{config});
+        printf("rd id       %02x d0\n", $me->{devid});
+        printf("rd status   %02x f3\n", $params->{status});
+        printf("rd ctl-rh   %02x f2\n", $params->{ctl_rh});
+        printf("rd ctl-meas %02x f4\n", $params->{ctl_meas});
+        printf("rd config   %02x f5\n", $params->{config});
     }
 }
 
@@ -83,6 +95,17 @@ sub get
     my $me = $_[0];
     my $dev = $me->{dev};
     my $dig = $me->{dig};
+
+    while ($me->{trig}) {
+        $dev->write_byte(@{$me->{trig}});
+        select(undef, undef, undef, 0.01);
+        my $status = $dev->read_byte(0xf3);
+        $me->{args}->{verbose} && printf(STDERR "@{[ref($me)]}::get status %02x\n", $status);
+        if (($status & 0x11) == 0) {
+            $me->{params}->{status} = $status;
+            last;
+        }
+    }
 
     # Read the raw AD values
     my @v = $dev->read_block(8, 0xf7);
