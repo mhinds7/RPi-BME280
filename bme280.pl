@@ -17,7 +17,7 @@ EOD
 my %ARGS;
 $ARGS{reset} = s/reset\s*// ? 1 : '';
 $ARGS{loop} = s/loop=(\S+)\s*// ? $1 : 0;
-$ARGS{quiet} = s/-q\s*// ? 1 : '';
+$ARGS{debug} = s/-d\s*// ? 1 : '';
 $ARGS{verbose} = s/-v\s*// ? 1 : '';
 
 my $bme280 = RPi::BME280->new(%ARGS);

@@ -4,7 +4,7 @@ package RPi::BME280;
 use strict;
 use warnings;
 
-our $VERSION = 0.0001;
+our $VERSION = 0.002;
 
 use RPi::I2C;
 
@@ -24,7 +24,7 @@ sub reset
 {
     my $me = $_[0];
     my $dev = $me->{dev};
-    $me->{args}->{quiet} || printf(STDERR "@{[ref($me)]}::reset\n");
+    $me->{args}->{debug} && printf(STDERR "@{[ref($me)]}::reset\n");
 
     $dev->write_byte(0xb6, 0x0e) == 0 # Reset
         || die("@{[ref($me)]}::reset failed");
@@ -36,7 +36,7 @@ sub setup
 {
     my $me = $_[0];
     my $dev = $me->{dev};
-    $me->{args}->{quiet} || printf(STDERR "@{[ref($me)]}::setup\n");
+    $me->{args}->{debug} && printf(STDERR "@{[ref($me)]}::setup\n");
 
     my @rh_ctl   = (0x04, 0xf2); # 00000  101  0000 0100 OS=8
     my @meas_ctl = (0x91, 0xf4); # 100 100 01  1001 0001 OS=T8,P8,FORCE
@@ -59,7 +59,7 @@ sub init
 
     $me->{args}->{reset} && $me->reset();
 
-    $me->{args}->{quiet} || printf(STDERR "@{[ref($me)]}::init\n");
+    $me->{args}->{debug} && printf(STDERR "@{[ref($me)]}::init\n");
 
     my $dig = $me->{dig} = {};
     ($dig->{T1}, $dig->{T2}, $dig->{T3}
@@ -100,7 +100,7 @@ sub get
         $dev->write_byte(@{$me->{trig}});
         select(undef, undef, undef, 0.01);
         my $status = $dev->read_byte(0xf3);
-        $me->{args}->{verbose} && printf(STDERR "@{[ref($me)]}::get status %02x\n", $status);
+        $me->{args}->{debug} && printf(STDERR "@{[ref($me)]}::get status %02x\n", $status);
         if (($status & 0x11) == 0) {
             $me->{params}->{status} = $status;
             last;
@@ -193,7 +193,7 @@ This module allows you to interface with a BME280 AT/RH/BP sensor.
 
 =head2 new(<keyval list>)
 reset   => <not true> or true the reset BME280
-quiet   => <not true> or print on info messages to STDERR
+debug   => <not true> or print debug messages to STDERR
 verbose => <not true> or print on extra info messages to STDERR
 loop    => 0 or interval time in seconds
 
