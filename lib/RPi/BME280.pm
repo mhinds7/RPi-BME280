@@ -25,7 +25,6 @@ sub reset
     my $me = $_[0];
     my $dev = $me->{dev};
     $me->{args}->{debug} && printf(STDERR "@{[ref($me)]}::reset\n");
-
     $dev->write_byte(0xb6, 0x0e) == 0 # Reset
         || die("@{[ref($me)]}::reset failed");
     select(undef, undef, undef, 0.05);
@@ -58,6 +57,8 @@ sub init
     my $dev = $me->{dev};
 
     $me->{args}->{reset} && $me->reset();
+
+    $me->{args}->{setup} && $me->setup();
 
     $me->{args}->{debug} && printf(STDERR "@{[ref($me)]}::init\n");
 

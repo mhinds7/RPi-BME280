@@ -16,6 +16,7 @@ EOD
 
 my %ARGS;
 $ARGS{reset} = s/reset\s*// ? 1 : '';
+$ARGS{setup} = s/setup\s*// ? 1 : '';
 $ARGS{loop} = s/loop=(\S+)\s*// ? $1 : 0;
 $ARGS{debug} = s/-d\s*// ? 1 : '';
 $ARGS{verbose} = s/-v\s*// ? 1 : '';
