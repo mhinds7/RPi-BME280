@@ -79,7 +79,7 @@ sub init
         = $dev->read_block(4, 0xf2);
     $me->{params} = $params;
 
-    ($params->{ctl_meas} & 3) != 0
+    ($params->{ctl_meas} & 3) == 3
         || ($me->{trig} = [ $params->{ctl_meas} | 1, 0xf4 ]);
 
     if ($me->{args}->{verbose}) {
