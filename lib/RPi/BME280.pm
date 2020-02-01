@@ -4,7 +4,7 @@ package RPi::BME280;
 use strict;
 use warnings;
 
-our $VERSION = 0.002;
+our $VERSION = 2.3601;
 
 use RPi::I2C;
 
@@ -126,8 +126,8 @@ sub get
     $rh = ($rh - ($dig->{H4} * 64 + $dig->{H5} / 16384 * ($t_fine - 76800)))
          * ($dig->{H2} / 65536 * (1 + $dig->{H6} / 67108864 * $rh * (1 + $dig->{H3} / 67108864 * $rh)));
     $rh = $rh * (1 - $dig->{H1} * $rh / 524288.0);
-    if    ($rh > 100.0) { $rh = 100.1 }
-    elsif ($rh <   0.0) { $rh =   0.0 }
+    if    ($rh <   0.0) { $rh =   0.0 }
+    elsif ($rh > 100.0) { $rh = 100.1 }
 
 #   # Compute BP - 32 bit
 #   $var1 = $t_fine / 2.0 - 64000.0;
@@ -143,8 +143,8 @@ sub get
 #       $var1 = $dig->{P9} * $bp * $bp / 2147483648.0;
 #       $var2 = $bp * $dig->{P8} / 32768.0;
 #       $bp = 0.01 * ($bp + ($var1 + $var2 + $dig->{P7}) / 16.0);
-#       if    ($bp > 1100.0) { $bp = 1100.1 }
-#       elsif ($bp <  300.0) { $bp =  299.9 }
+#       if    ($bp <  300.0) { $bp =  299.9 }
+#       elsif ($bp > 1100.0) { $bp = 1100.1 }
 #   }
 
     # Compute BP - 64 bit
